@@ -33,24 +33,42 @@ public class StudentService {
 
     @Transactional
     public Student registerStudent(Student student, String base64Image) throws IOException {
+        System.out.println("Registering student: " + student.getName() + " (" + student.getEmail() + ")");
         // Create user account for student using EMAIL as username
         if (userRepository.findByUsername(student.getEmail()).isPresent()) {
+            System.err.println("Registration failed: Email already exists: " + student.getEmail());
             throw new RuntimeException("Email already exists: " + student.getEmail());
         }
 
         User user = new User();
         user.setUsername(student.getEmail());
+        user.setName(student.getName());
+        user.setEmail(student.getEmail());
+        user.setRollNumber(student.getRollNumber());
         // Default password is the roll number
         user.setPassword(passwordEncoder.encode(student.getRollNumber()));
         user.setRole("STUDENT");
         userRepository.save(user);
+        System.out.println("User account created for student");
 
         // Save initial student to get ID
         Student savedStudent = studentRepository.save(student);
+        System.out.println("Student record saved with ID: " + savedStudent.getId());
         
-        // Save face image and update student record with path
-        String facePath = faceRecognitionService.saveStudentFace(savedStudent.getId(), base64Image);
-        savedStudent.setFaceImagePath(facePath);
+        try {
+            // Save face image and update student record with path
+            String facePath = faceRecognitionService.saveStudentFace(savedStudent.getId(), base64Image);
+            savedStudent.setFaceImagePath(facePath);
+            studentRepository.saveAndFlush(savedStudent); // Force save to DB before training
+            System.out.println("Face image saved to: " + facePath);
+            
+            System.out.println("Retraining model with new student data...");
+            faceRecognitionService.trainModel();
+        } catch (Exception e) {
+            System.err.println("Error saving face image: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to process face image: " + e.getMessage());
+        }
         
         return studentRepository.save(savedStudent);
     }
@@ -89,6 +107,8 @@ public class StudentService {
         if (base64Image != null && !base64Image.isEmpty()) {
             String facePath = faceRecognitionService.saveStudentFace(student.getId(), base64Image);
             student.setFaceImagePath(facePath);
+            studentRepository.saveAndFlush(student); // Force save before training
+            faceRecognitionService.trainModel();
         }
         
         return studentRepository.save(student);

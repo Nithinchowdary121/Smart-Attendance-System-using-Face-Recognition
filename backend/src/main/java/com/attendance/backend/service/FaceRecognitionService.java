@@ -157,8 +157,8 @@ public class FaceRecognitionService {
 
             // LBPH confidence: lower is better. 
             // After optimization, a confidence below 60 is a very strong match.
-            // A confidence between 60-90 is a likely match.
-            if (label[0] != -1 && confidence[0] < 90.0) { 
+            // A confidence between 60-80 is a likely match.
+            if (label[0] != -1 && confidence[0] < 80.0) { 
                 return (long) label[0];
             }
         } catch (Exception e) {
@@ -169,19 +169,38 @@ public class FaceRecognitionService {
     }
 
     public String saveStudentFace(Long studentId, String base64Image) throws IOException {
-        byte[] imageBytes = Base64.getDecoder().decode(base64Image.split(",")[1]);
-        String filePath = storagePath + "student_" + studentId + ".jpg";
-        
-        Mat img = imdecode(new Mat(imageBytes), IMREAD_GRAYSCALE);
-        Mat face = preprocessFace(img);
-        
-        if (face != null) {
-            imwrite(filePath, face);
-        } else {
-            Files.write(Paths.get(filePath), imageBytes);
+        System.out.println("Processing face image for student ID: " + studentId);
+        if (base64Image == null || !base64Image.contains(",")) {
+            throw new IOException("Invalid image format");
         }
         
-        trainModel();
-        return filePath;
+        try {
+            byte[] imageBytes = Base64.getDecoder().decode(base64Image.split(",")[1]);
+            String filePath = storagePath + "student_" + studentId + ".jpg";
+            
+            Mat img = imdecode(new Mat(imageBytes), IMREAD_GRAYSCALE);
+            if (img.empty()) {
+                throw new IOException("Failed to decode image");
+            }
+            
+            Mat face = preprocessFace(img);
+            
+            if (face != null && !face.empty()) {
+                System.out.println("Face detected and preprocessed. Saving to: " + filePath);
+                if (!imwrite(filePath, face)) {
+                    System.err.println("imwrite failed for path: " + filePath);
+                    throw new IOException("Failed to save image file to disk");
+                }
+            } else {
+                System.out.println("No face detected in image. Saving raw image to: " + filePath);
+                Files.write(Paths.get(filePath), imageBytes);
+            }
+            
+            return filePath;
+        } catch (Exception e) {
+            System.err.println("Error in saveStudentFace: " + e.getMessage());
+            e.printStackTrace();
+            throw new IOException("Face processing error: " + e.getMessage());
+        }
     }
 }

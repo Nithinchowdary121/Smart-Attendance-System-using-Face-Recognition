@@ -25,9 +25,9 @@ public class AttendanceService {
     private FaceRecognitionService faceRecognitionService;
 
     public String markAttendance(String base64Image, Long subjectId, String currentUserEmail) {
-        // Find the student by the logged-in user's email
+        // Find the student by the logged-in user's email or username
         Optional<Student> studentOptional = studentRepository.findAll().stream()
-                .filter(s -> s.getEmail().equalsIgnoreCase(currentUserEmail))
+                .filter(s -> s.getEmail().equalsIgnoreCase(currentUserEmail) || s.getName().equalsIgnoreCase(currentUserEmail))
                 .findFirst();
 
         if (studentOptional.isEmpty()) {

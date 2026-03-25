@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
 import { ClipboardCheck, Calendar, Search, Download, Filter, User, ChevronLeft, Book } from "lucide-react";
-import { Link } from "react-router-dom";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
@@ -12,6 +12,7 @@ const AttendanceReport = () => {
   const [loading, setLoading] = useState(false);
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
 
   const fetchData = async () => {
     setLoading(true);
@@ -39,6 +40,11 @@ const AttendanceReport = () => {
   };
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || user.role !== "ADMIN") {
+      navigate("/");
+      return;
+    }
     fetchData();
   }, [dateFilter]);
 

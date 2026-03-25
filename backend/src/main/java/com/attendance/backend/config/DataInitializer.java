@@ -30,9 +30,6 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         System.out.println("Data Initializer started...");
         
-        // Force refresh admin user to ensure password encoding is correct
-        userRepository.findByUsername("admin").ifPresent(userRepository::delete);
-        
         if (userRepository.findByUsername("admin").isEmpty()) {
             User admin = new User();
             admin.setUsername("admin");

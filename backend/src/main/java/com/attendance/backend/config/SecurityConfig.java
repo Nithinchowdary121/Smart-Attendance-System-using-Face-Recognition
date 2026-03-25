@@ -53,7 +53,7 @@ public class SecurityConfig {
                     return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/error").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/chat/**", "/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

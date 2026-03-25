@@ -14,6 +14,12 @@ const Attendance = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const user = localStorage.getItem("user");
+    if (!user) {
+      navigate("/");
+      return;
+    }
+
     const fetchSubjects = async () => {
       try {
         const res = await API.get("/subjects");

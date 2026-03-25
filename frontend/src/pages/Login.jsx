@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
-import { LogIn, User, Lock, AlertCircle } from "lucide-react";
+import { LogIn, User, Lock, AlertCircle, UserPlus } from "lucide-react";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -87,10 +87,17 @@ const Login = () => {
           >
             {loading ? "Authenticating..." : "Sign In"}
           </button>
+          
+          <div className="text-center pt-2">
+            <Link to="/register" className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-bold text-sm group">
+              <UserPlus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              Don't have an account? Sign Up
+            </Link>
+          </div>
         </form>
         
         <div className="p-6 bg-gray-50 text-center border-t border-gray-100">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 font-medium">
             Powered by Biometric Recognition Technology
           </p>
         </div>

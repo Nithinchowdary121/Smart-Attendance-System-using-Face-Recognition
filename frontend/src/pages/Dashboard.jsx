@@ -11,6 +11,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || user.role !== "ADMIN") {
+      navigate("/");
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const [studentsRes, attendanceRes] = await Promise.all([

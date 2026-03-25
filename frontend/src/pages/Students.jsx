@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import API from "../services/api";
 import { UserPlus, Camera, Save, X, Search, Mail, Fingerprint, RefreshCw, Trash2 } from "lucide-react";
@@ -11,6 +12,7 @@ const Students = () => {
   const webcamRef = useRef(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [editingStudentId, setEditingStudentId] = useState(null);
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -20,9 +22,7 @@ const Students = () => {
 
   const fetchStudents = async () => {
     try {
-      const res = await API.get("/students", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
+      const res = await API.get("/students");
       setStudents(res.data);
     } catch (err) {
       console.error(err);
@@ -30,6 +30,11 @@ const Students = () => {
   };
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || user.role !== "ADMIN") {
+      navigate("/");
+      return;
+    }
     fetchStudents();
   }, []);
 
