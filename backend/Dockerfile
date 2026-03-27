@@ -7,10 +7,16 @@ RUN mvn clean package -DskipTests -Djavacpp.platform=linux-x86_64
 
 FROM eclipse-temurin:21-jre
 ENV DEBIAN_FRONTEND=noninteractive
-# Install only the essential native dependencies for OpenCV CPU operations
+# Install essential native dependencies for OpenCV
+# libglib2.0-0, libsm6, libxext6, libxrender1 are required by the highgui module 
+# even if not explicitly used, as JavaCV loads it by default.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libquadmath0 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

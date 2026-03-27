@@ -95,6 +95,10 @@ public class FaceRecognitionService {
     }
 
     public void trainModel() {
+        if (recognizer == null) {
+            System.err.println("Model training skipped: Face recognizer is not initialized (native library issue?).");
+            return;
+        }
         try {
             List<Student> students = studentRepository.findAll();
             if (students.isEmpty()) {
@@ -173,6 +177,10 @@ public class FaceRecognitionService {
     }
 
     public Long recognizeStudent(String base64Image) {
+        if (recognizer == null) {
+            System.err.println("Recognition skipped: Face recognizer is not initialized (native library issue?).");
+            return null;
+        }
         try {
             byte[] imageBytes = Base64.getDecoder().decode(base64Image.split(",")[1]);
             Mat img = imdecode(new Mat(imageBytes), IMREAD_GRAYSCALE);
