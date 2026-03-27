@@ -1,9 +1,9 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:go-offline -B -Djavacpp.platform=linux-x86_64
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests -Djavacpp.platform=linux-x86_64
 
 FROM eclipse-temurin:21-jre
 # Install native dependencies for OpenCV/JavaCV (glibc environment)
