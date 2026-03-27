@@ -6,6 +6,9 @@ import org.bytedeco.javacpp.IntPointer;
 import org.bytedeco.opencv.opencv_core.*;
 import org.bytedeco.opencv.opencv_face.LBPHFaceRecognizer;
 import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,6 +76,13 @@ public class FaceRecognitionService {
         if (!dir.exists()) {
             dir.mkdirs();
         }
+        // Moved trainModel() to ApplicationReadyEvent to avoid blocking startup
+    }
+
+    @Async
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        System.out.println("Application is ready. Starting model training in background...");
         trainModel();
     }
 
