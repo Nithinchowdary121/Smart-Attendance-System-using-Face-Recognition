@@ -53,7 +53,7 @@ public class SecurityConfig {
                     return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/api/**", "/error", "/h2-console/**").permitAll()
+                        .requestMatchers("/healthz", "/", "/index.html", "/api/**", "/error", "/h2-console/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
