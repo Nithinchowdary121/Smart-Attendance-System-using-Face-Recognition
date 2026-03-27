@@ -41,6 +41,22 @@ public class FaceRecognitionService {
         // Radius: 1, Neighbors: 8, Grid X: 8, Grid Y: 8, Threshold: Double.MAX_VALUE
         recognizer = LBPHFaceRecognizer.create(1, 8, 8, 8, Double.MAX_VALUE);
         
+        File dir = new File(storagePath);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        // Moved heavy classifier loading and model training to ApplicationReadyEvent
+    }
+
+    @Async
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        System.out.println("Application is ready. Initializing heavy components in background...");
+        loadCascadeClassifier();
+        trainModel();
+    }
+
+    private void loadCascadeClassifier() {
         try {
             // Try multiple locations for the cascade file
             String[] possiblePaths = {
@@ -69,19 +85,6 @@ public class FaceRecognitionService {
             System.out.println("Error loading cascade classifier: " + e.getMessage());
             faceDetector = null;
         }
-        
-        File dir = new File(storagePath);
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-        // Moved trainModel() to ApplicationReadyEvent to avoid blocking startup
-    }
-
-    @Async
-    @EventListener(ApplicationReadyEvent.class)
-    public void onApplicationReady() {
-        System.out.println("Application is ready. Starting model training in background...");
-        trainModel();
     }
 
     public void trainModel() {

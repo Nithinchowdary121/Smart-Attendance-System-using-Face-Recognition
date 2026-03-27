@@ -10,7 +10,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 public class BackendApplication {
 
 	public static void main(String[] args) {
-		
+		System.out.println("Backend Application starting...");
 		Dotenv dotenv = Dotenv.configure()
                 .directory("./")
                 .ignoreIfMalformed()
@@ -21,7 +21,9 @@ public class BackendApplication {
                 System.setProperty(e.getKey(), e.getValue());
             }
         });
+		System.out.println("Environment variables loaded. Launching Spring Boot...");
 		SpringApplication.run(BackendApplication.class, args);
+		System.out.println("Spring Boot Application context started.");
 	}
 
 }
