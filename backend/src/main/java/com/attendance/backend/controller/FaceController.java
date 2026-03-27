@@ -9,7 +9,6 @@ import com.attendance.backend.service.FaceRecognitionService;
 
 @RestController
 @RequestMapping("/api/face")
-@CrossOrigin
 public class FaceController {
 
     private final FaceRecognitionService FaceRecognitionService;

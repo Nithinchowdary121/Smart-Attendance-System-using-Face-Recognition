@@ -12,6 +12,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -60,26 +62,39 @@ public class AuthService {
         return response;
     }
 
+    @Transactional
     public void register(User user) {
         System.out.println("Registering user: [" + user.getUsername() + "] with role: [" + user.getRole() + "]");
+        
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            throw new RuntimeException("Username is required");
+        }
+
         if (userRepository.findByUsername(user.getUsername()).isPresent()) {
             System.err.println("Registration FAILED: Username [" + user.getUsername() + "] already exists");
             throw new RuntimeException("Username already exists");
         }
-        String encodedPassword = passwordEncoder.encode(user.getPassword());
-        user.setPassword(encodedPassword);
-        userRepository.save(user);
-        System.out.println("User [" + user.getUsername() + "] saved to database successfully");
 
-        // If it's a student, automatically create a student profile
-        if ("USER".equals(user.getRole())) {
-            System.out.println("Creating student profile for user: [" + user.getUsername() + "]");
-            com.attendance.backend.model.Student student = new com.attendance.backend.model.Student();
-            student.setName(user.getName() != null ? user.getName() : user.getUsername());
-            student.setEmail(user.getEmail() != null ? user.getEmail() : user.getUsername());
-            student.setRollNumber(user.getRollNumber() != null ? user.getRollNumber() : "TEMP-" + System.currentTimeMillis());
-            studentRepository.save(student);
-            System.out.println("Student profile created successfully for: [" + student.getEmail() + "]");
+        try {
+            String encodedPassword = passwordEncoder.encode(user.getPassword());
+            user.setPassword(encodedPassword);
+            User savedUser = userRepository.save(user);
+            System.out.println("User [" + savedUser.getUsername() + "] saved to database with ID: " + savedUser.getId());
+
+            // If it's a student (role USER), automatically create a student profile
+            if ("USER".equals(user.getRole())) {
+                System.out.println("Creating student profile for user: [" + user.getUsername() + "]");
+                com.attendance.backend.model.Student student = new com.attendance.backend.model.Student();
+                student.setName(user.getName() != null ? user.getName() : user.getUsername());
+                student.setEmail(user.getEmail() != null ? user.getEmail() : user.getUsername());
+                student.setRollNumber(user.getRollNumber() != null ? user.getRollNumber() : "TEMP-" + System.currentTimeMillis());
+                studentRepository.save(student);
+                System.out.println("Student profile created successfully for: [" + student.getEmail() + "]");
+            }
+        } catch (Exception e) {
+            System.err.println("Error during registration: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Registration failed: " + e.getMessage());
         }
     }
 }

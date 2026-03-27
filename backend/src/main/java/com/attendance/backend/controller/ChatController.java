@@ -7,7 +7,6 @@ import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = "*")
 public class ChatController {
 
     @PostMapping

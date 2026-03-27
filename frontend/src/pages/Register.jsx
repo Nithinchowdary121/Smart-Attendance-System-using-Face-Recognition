@@ -34,7 +34,9 @@ const Register = () => {
         navigate("/");
       }, 2000);
     } catch (err) {
-      setError(err.response?.data || "Registration failed. Username might be taken.");
+      console.error("Registration error details:", err);
+      const errorMessage = err.response?.data || err.message || "Registration failed. Please check your connection.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

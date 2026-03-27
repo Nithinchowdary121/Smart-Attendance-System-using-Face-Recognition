@@ -25,7 +25,9 @@ const Login = () => {
         navigate("/attendance");
       }
     } catch (err) {
-      setError("Invalid username or password");
+      console.error("Login error details:", err);
+      const errorMessage = err.response?.data || err.message || "Invalid username or password";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
