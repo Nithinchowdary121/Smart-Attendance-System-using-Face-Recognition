@@ -6,15 +6,11 @@ COPY src ./src
 RUN mvn clean package -DskipTests -Djavacpp.platform=linux-x86_64
 
 FROM eclipse-temurin:21-jre
-# Install native dependencies for OpenCV/JavaCV (glibc environment)
-RUN apt-get update && apt-get install -y \
+ENV DEBIAN_FRONTEND=noninteractive
+# Install only the essential native dependencies for OpenCV CPU operations
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libquadmath0 \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
