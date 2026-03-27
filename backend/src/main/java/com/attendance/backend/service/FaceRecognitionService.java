@@ -8,6 +8,7 @@ import org.bytedeco.opencv.opencv_face.LBPHFaceRecognizer;
 import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
@@ -40,14 +41,27 @@ public class FaceRecognitionService {
         recognizer = LBPHFaceRecognizer.create(1, 8, 8, 8, Double.MAX_VALUE);
         
         try {
-            // Try to load the cascade file. If it's not in the root, it might be in resources.
-            // For now, we'll try to load it and check if it's actually loaded.
-            faceDetector = new CascadeClassifier("haarcascade_frontalface_default.xml");
-            if (faceDetector.empty()) {
+            // Try multiple locations for the cascade file
+            String[] possiblePaths = {
+                "haarcascade_frontalface_default.xml",                                                                                                                                                                                              
+                "backend/haarcascade_frontalface_default.xml",
+                "src/main/resources/haarcascade_frontalface_default.xml"
+            };
+
+            for (String path : possiblePaths) {
+                File file = new File(path);
+                if (file.exists()) {
+                    faceDetector = new CascadeClassifier(file.getAbsolutePath());
+                    if (!faceDetector.empty()) {
+                        System.out.println("Cascade classifier loaded successfully from: " + file.getAbsolutePath());
+                        break;
+                    }
+                }
+            }
+
+            if (faceDetector == null || faceDetector.empty()) {
                 System.out.println("Warning: Cascade classifier is empty. Face detection will be skipped.");
                 faceDetector = null;
-            } else {
-                System.out.println("Cascade classifier loaded successfully.");
             }
         } catch (Exception e) {
             System.out.println("Error loading cascade classifier: " + e.getMessage());
@@ -153,13 +167,17 @@ public class FaceRecognitionService {
             double[] confidence = new double[1];
             recognizer.predict(face, label, confidence);
 
-            System.out.println("Predicted Label: " + label[0] + " with Confidence: " + confidence[0]);
+            System.out.println("DEBUG: Predicted Label: " + label[0] + " with Confidence: " + confidence[0]);
 
             // LBPH confidence: lower is better. 
-            // After optimization, a confidence below 60 is a very strong match.
-            // A confidence between 60-80 is a likely match.
-            if (label[0] != -1 && confidence[0] < 80.0) { 
+            // - Strong Match: < 60
+            // - Normal Match: 60 - 95
+            // - Uncertain/Likely False: > 115
+            if (label[0] != -1 && confidence[0] < 115.0) { 
+                System.out.println("DEBUG: Face MATCHED (Confidence is within safe threshold < 115.0)");
                 return (long) label[0];
+            } else {
+                System.out.println("DEBUG: Face REJECTED (Confidence " + confidence[0] + " is too high/unsafe)");
             }
         } catch (Exception e) {
             System.out.println("Recognition error: " + e.getMessage());
@@ -178,29 +196,17 @@ public class FaceRecognitionService {
             byte[] imageBytes = Base64.getDecoder().decode(base64Image.split(",")[1]);
             String filePath = storagePath + "student_" + studentId + ".jpg";
             
-            Mat img = imdecode(new Mat(imageBytes), IMREAD_GRAYSCALE);
-            if (img.empty()) {
-                throw new IOException("Failed to decode image");
-            }
-            
-            Mat face = preprocessFace(img);
-            
-            if (face != null && !face.empty()) {
-                System.out.println("Face detected and preprocessed. Saving to: " + filePath);
-                if (!imwrite(filePath, face)) {
-                    System.err.println("imwrite failed for path: " + filePath);
-                    throw new IOException("Failed to save image file to disk");
-                }
-            } else {
-                System.out.println("No face detected in image. Saving raw image to: " + filePath);
-                Files.write(Paths.get(filePath), imageBytes);
-            }
+            // Save RAW image to disk
+            // We only preprocess in trainModel() and recognizeStudent()
+            // to ensure consistency and avoid double preprocessing
+            System.out.println("Saving raw student image to: " + filePath);
+            Files.write(Paths.get(filePath), imageBytes);
             
             return filePath;
         } catch (Exception e) {
             System.err.println("Error in saveStudentFace: " + e.getMessage());
             e.printStackTrace();
-            throw new IOException("Face processing error: " + e.getMessage());
+            throw new IOException("Face storage error: " + e.getMessage());
         }
     }
 }

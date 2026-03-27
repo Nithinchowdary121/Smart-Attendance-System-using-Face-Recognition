@@ -34,34 +34,50 @@ public class StudentService {
     @Transactional
     public Student registerStudent(Student student, String base64Image) throws IOException {
         System.out.println("Registering student: " + student.getName() + " (" + student.getEmail() + ")");
-        // Create user account for student using EMAIL as username
-        if (userRepository.findByUsername(student.getEmail()).isPresent()) {
-            System.err.println("Registration failed: Email already exists: " + student.getEmail());
-            throw new RuntimeException("Email already exists: " + student.getEmail());
-        }
+        
+        // 1. Ensure a User account exists for this student
+        // If the student created their own account, we find it.
+        // Otherwise, we create one using email as the default username.
+        User user = userRepository.findByUsername(student.getEmail())
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setUsername(student.getEmail());
+                    newUser.setRole("STUDENT");
+                    return newUser;
+                });
 
-        User user = new User();
-        user.setUsername(student.getEmail());
         user.setName(student.getName());
         user.setEmail(student.getEmail());
         user.setRollNumber(student.getRollNumber());
-        // Default password is the roll number
-        user.setPassword(passwordEncoder.encode(student.getRollNumber()));
-        user.setRole("STUDENT");
+        
+        // If it's a new account, set default password as roll number
+        if (user.getId() == null) {
+            user.setPassword(passwordEncoder.encode(student.getRollNumber()));
+        }
+        
         userRepository.save(user);
-        System.out.println("User account created for student");
+        System.out.println("User account linked/created for student");
+
+        // 2. Check if a Student biometric record already exists for this email
+        Student studentToSave = studentRepository.findByEmail(student.getEmail())
+                .orElse(student);
+        
+        studentToSave.setName(student.getName());
+        studentToSave.setEmail(student.getEmail());
+        studentToSave.setRollNumber(student.getRollNumber());
 
         // Save initial student to get ID
-        Student savedStudent = studentRepository.save(student);
-        System.out.println("Student record saved with ID: " + savedStudent.getId());
+        Student savedStudent = studentRepository.save(studentToSave);
+        System.out.println("Student biometric record saved with ID: " + savedStudent.getId());
         
         try {
             // Save face image and update student record with path
             String facePath = faceRecognitionService.saveStudentFace(savedStudent.getId(), base64Image);
             savedStudent.setFaceImagePath(facePath);
-            studentRepository.saveAndFlush(savedStudent); // Force save to DB before training
+            studentRepository.saveAndFlush(savedStudent); // Force save to DB
             System.out.println("Face image saved to: " + facePath);
             
+            // Retrain the model AFTER the database record is fully saved and flushed
             System.out.println("Retraining model with new student data...");
             faceRecognitionService.trainModel();
         } catch (Exception e) {
@@ -78,28 +94,36 @@ public class StudentService {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Student not found with id: " + id));
         
-        // Update user account if email changed
+        // Find or create user account
+        User user = userRepository.findByUsername(student.getEmail())
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setUsername(student.getEmail());
+                    newUser.setRole("STUDENT");
+                    return newUser;
+                });
+
+        // Check if new email is already taken by ANOTHER user
         if (!student.getEmail().equals(studentDetails.getEmail())) {
-            User user = userRepository.findByUsername(student.getEmail())
-                    .orElseThrow(() -> new RuntimeException("User account not found for student email: " + student.getEmail()));
-            
-            // Check if new email already taken
             if (userRepository.findByUsername(studentDetails.getEmail()).isPresent()) {
                 throw new RuntimeException("New email already exists: " + studentDetails.getEmail());
             }
-            
-            user.setUsername(studentDetails.getEmail());
-            userRepository.save(user);
         }
 
-        // Update password if roll number changed
-        if (!student.getRollNumber().equals(studentDetails.getRollNumber())) {
-            User user = userRepository.findByUsername(studentDetails.getEmail())
-                    .orElseThrow(() -> new RuntimeException("User account not found for student email: " + studentDetails.getEmail()));
+        // Sync user account with new student details
+        user.setUsername(studentDetails.getEmail());
+        user.setEmail(studentDetails.getEmail());
+        user.setName(studentDetails.getName());
+        user.setRollNumber(studentDetails.getRollNumber());
+        
+        // Update password if roll number changed (or if it's a new user account)
+        if (user.getId() == null || !student.getRollNumber().equals(studentDetails.getRollNumber())) {
             user.setPassword(passwordEncoder.encode(studentDetails.getRollNumber()));
-            userRepository.save(user);
         }
+        
+        userRepository.save(user);
 
+        // Update student record
         student.setName(studentDetails.getName());
         student.setEmail(studentDetails.getEmail());
         student.setRollNumber(studentDetails.getRollNumber());
@@ -108,6 +132,7 @@ public class StudentService {
             String facePath = faceRecognitionService.saveStudentFace(student.getId(), base64Image);
             student.setFaceImagePath(facePath);
             studentRepository.saveAndFlush(student); // Force save before training
+            System.out.println("Retraining model after student update...");
             faceRecognitionService.trainModel();
         }
         
