@@ -37,9 +37,16 @@ public class FaceRecognitionService {
 
     @PostConstruct
     public void init() {
-        // Optimized LBPH parameters for better accuracy and granularity
-        // Radius: 1, Neighbors: 8, Grid X: 8, Grid Y: 8, Threshold: Double.MAX_VALUE
-        recognizer = LBPHFaceRecognizer.create(1, 8, 8, 8, Double.MAX_VALUE);
+        try {
+            // Optimized LBPH parameters for better accuracy and granularity
+            // Radius: 1, Neighbors: 8, Grid X: 8, Grid Y: 8, Threshold: Double.MAX_VALUE
+            recognizer = LBPHFaceRecognizer.create(1, 8, 8, 8, Double.MAX_VALUE);
+            System.out.println("LBPH Face Recognizer initialized successfully.");
+        } catch (Throwable e) {
+            System.err.println("CRITICAL WARNING: Failed to initialize LBPH Face Recognizer. Native library issue? " + e.getMessage());
+            // Application continues to start, but face recognition will be disabled.
+            recognizer = null;
+        }
         
         File dir = new File(storagePath);
         if (!dir.exists()) {

@@ -19,5 +19,7 @@ COPY --from=build /app/target/*.jar app.jar
 COPY --from=build /app/src/main/resources/haarcascade_frontalface_default.xml .
 
 EXPOSE 8080
-# Use environment variables for JVM settings to avoid OOM on Render's 512MB RAM
-ENTRYPOINT ["java", "-Xmx300m", "-Xms128m", "-jar", "app.jar"]
+# Adjusted for Render's 512MB limit: 
+# -Xmx256m leaves room for native memory used by OpenCV.
+# UseSerialGC is more efficient for single-core/low-memory environments.
+ENTRYPOINT ["java", "-Xmx256m", "-Xms128m", "-XX:+UseSerialGC", "-XX:MaxDirectMemorySize=128m", "-jar", "app.jar"]
