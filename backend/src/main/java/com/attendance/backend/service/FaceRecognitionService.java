@@ -43,9 +43,10 @@ public class FaceRecognitionService {
         try {
             // Try multiple locations for the cascade file
             String[] possiblePaths = {
-                "haarcascade_frontalface_default.xml",                                                                                                                                                                                              
+                "haarcascade_frontalface_default.xml",
                 "backend/haarcascade_frontalface_default.xml",
-                "src/main/resources/haarcascade_frontalface_default.xml"
+                "src/main/resources/haarcascade_frontalface_default.xml",
+                new File(System.getProperty("user.dir"), "haarcascade_frontalface_default.xml").getAbsolutePath()
             };
 
             for (String path : possiblePaths) {
