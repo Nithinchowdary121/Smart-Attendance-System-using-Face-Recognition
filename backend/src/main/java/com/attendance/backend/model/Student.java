@@ -1,5 +1,6 @@
 package com.attendance.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -20,6 +21,7 @@ public class Student {
 
     @Lob
     @Column(columnDefinition="LONGBLOB")
+    @JsonIgnore
     private byte[] faceData;
 
     public Student(){}

@@ -248,10 +248,10 @@ public class FaceRecognitionService {
             // LBPH confidence: lower is better. 
             // - Strong Match: < 70
             // - Normal Match: 70 - 110
-            // - Uncertain/Likely False: > 140
-            // Increased threshold to 150.0 to be significantly more lenient for the user
-            if (label[0] != -1 && confidence[0] < 150.0) { 
-                System.out.println("DEBUG: Face MATCHED (Confidence " + confidence[0] + " is within safe threshold < 150.0)");
+            // - Uncertain/Likely False: > 130
+            // Threshold set to 130.0 for strict security while remaining reliable
+            if (label[0] != -1 && confidence[0] < 130.0) { 
+                System.out.println("DEBUG: Face MATCHED (Confidence " + confidence[0] + " is within safe threshold < 130.0)");
                 return (long) label[0];
             } else {
                 System.out.println("DEBUG: Face REJECTED (Confidence " + confidence[0] + " is too high/unsafe or Label is -1)");

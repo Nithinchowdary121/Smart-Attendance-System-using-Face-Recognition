@@ -55,8 +55,13 @@ public class AttendanceService {
         
         Long recognizedStudentId = faceRecognitionService.recognizeStudent(base64Image);
 
-        if (recognizedStudentId != null && recognizedStudentId.equals(currentStudent.getId())) {
-            System.out.println("DEBUG: Face recognition successful for Student ID: " + recognizedStudentId);
+        if (recognizedStudentId == null) {
+            System.err.println("DEBUG: Attendance REJECTED - No face recognized or face mismatch for Student: " + currentStudent.getName());
+            return "Face not recognized. Please ensure you are clearly visible and looking at the camera.";
+        }
+
+        if (recognizedStudentId.equals(currentStudent.getId())) {
+            System.out.println("DEBUG: Face recognition successful for Student: " + currentStudent.getName() + " (ID: " + recognizedStudentId + ")");
             // Check if already marked for today and this subject
             Optional<Attendance> existing = attendanceRepository.findByStudentIdAndDateAndSubjectId(currentStudent.getId(), LocalDate.now(), subjectId);
             if (existing.isPresent()) {
@@ -72,10 +77,10 @@ public class AttendanceService {
             attendance.setStatus("PRESENT");
             attendanceRepository.save(attendance);
             System.out.println("DEBUG: Attendance saved successfully for Student: " + currentStudent.getName());
-            return "Attendance marked for " + currentStudent.getName();
+            return "Attendance marked successfully for " + currentStudent.getName();
         } else {
-            System.err.println("DEBUG: Attendance REJECTED - Face does not match registered student ID: " + currentStudent.getId());
-            return "Face not matched. Please try again with your registered identity.";
+            System.err.println("DEBUG: Attendance REJECTED - Face matched a DIFFERENT student (ID: " + recognizedStudentId + ") instead of current user (ID: " + currentStudent.getId() + ")");
+            return "Face does not match your registered profile. Attendance can only be marked for your own identity.";
         }
     }
 
