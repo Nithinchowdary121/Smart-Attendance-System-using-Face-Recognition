@@ -21,13 +21,13 @@ const Register = () => {
     setError("");
     setSuccess("");
     try {
-      await API.post("/auth/register", { 
+      const res = await API.post("/auth/register", { 
         username, 
+        email: role === "ADMIN" ? username : email, // If admin, use username as email if not provided
         password, 
-        role,
-        name: role === "USER" ? name : null,
-        email: role === "USER" ? email : null,
-        rollNumber: role === "USER" ? rollNumber : null
+        role: role === "ADMIN" ? "ADMIN" : "STUDENT", 
+        name: role === "ADMIN" ? username : name, 
+        rollNumber: role === "ADMIN" ? "ADMIN-USER" : rollNumber 
       });
       setSuccess("Account created successfully! Redirecting to login...");
       setTimeout(() => {

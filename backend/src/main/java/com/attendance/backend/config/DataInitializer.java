@@ -54,13 +54,13 @@ public class DataInitializer {
         // Create individual accounts for existing students if missing or using old format
         List<Student> students = studentRepository.findAll();
         for (Student student : students) {
-            // Remove old account using roll number as username if it exists
-            userRepository.findByUsername(student.getRollNumber()).ifPresent(userRepository::delete);
-            
             // Ensure account exists using EMAIL as username
             if (userRepository.findByUsername(student.getEmail()).isEmpty()) {
                 User user = new User();
                 user.setUsername(student.getEmail());
+                user.setEmail(student.getEmail());
+                user.setName(student.getName());
+                user.setRollNumber(student.getRollNumber());
                 user.setPassword(passwordEncoder.encode(student.getRollNumber()));
                 user.setRole("STUDENT");
                 userRepository.save(user);

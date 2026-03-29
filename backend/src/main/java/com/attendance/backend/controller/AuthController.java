@@ -33,10 +33,13 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
+        System.out.println("DEBUG: AuthController.register called for: [" + user.getUsername() + "]");
         try {
             authService.register(user);
+            System.out.println("DEBUG: AuthController.register SUCCESS for: [" + user.getUsername() + "]");
             return ResponseEntity.ok("User registered successfully");
         } catch (Exception e) {
+            System.err.println("DEBUG: AuthController.register FAILED for: [" + user.getUsername() + "] - Error: " + e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
