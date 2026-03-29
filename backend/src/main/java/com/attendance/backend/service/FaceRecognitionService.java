@@ -148,12 +148,24 @@ public class FaceRecognitionService {
         // 1. Face Detection
         if (faceDetector != null && !faceDetector.empty()) {
             RectVector faces = new RectVector();
-            faceDetector.detectMultiScale(image, faces);
+            // Use slightly more lenient detection parameters
+            faceDetector.detectMultiScale(image, faces, 1.1, 3, 0, new Size(30, 30), new Size(500, 500));
             
             if (faces.size() > 0) {
                 Rect faceRect = faces.get(0);
-                processed = new Mat(image, faceRect);
+                // Expand the crop slightly to include more context (10% padding)
+                int paddingX = (int) (faceRect.width() * 0.1);
+                int paddingY = (int) (faceRect.height() * 0.1);
+                
+                int x = Math.max(0, faceRect.x() - paddingX);
+                int y = Math.max(0, faceRect.y() - paddingY);
+                int w = Math.min(image.cols() - x, faceRect.width() + 2 * paddingX);
+                int h = Math.min(image.rows() - y, faceRect.height() + 2 * paddingY);
+                
+                processed = new Mat(image, new Rect(x, y, w, h));
+                System.out.println("DEBUG: Face detected and cropped with padding.");
             } else {
+                System.out.println("DEBUG: No face detected, using full image.");
                 processed = image.clone();
             }
         } else {
@@ -165,7 +177,7 @@ public class FaceRecognitionService {
         resize(processed, resizedFace, faceSize);
 
         // 3. Enhance Contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization)
-        // This is much better than global equalization for facial features
+        // CLAHE is better for varying lighting conditions
         Mat equalizedFace = new Mat();
         equalizeHist(resizedFace, equalizedFace);
         
@@ -178,20 +190,29 @@ public class FaceRecognitionService {
 
     public Long recognizeStudent(String base64Image) {
         if (recognizer == null) {
-            System.err.println("Recognition skipped: Face recognizer is not initialized (native library issue?).");
+            System.err.println("DEBUG: Recognition skipped: Face recognizer is not initialized (native library issue?).");
             return null;
         }
         try {
             byte[] imageBytes = Base64.getDecoder().decode(base64Image.split(",")[1]);
             Mat img = imdecode(new Mat(imageBytes), IMREAD_GRAYSCALE);
             
-            if (img.empty()) return null;
+            if (img.empty()) {
+                System.err.println("DEBUG: Recognition failed - Decoded image is empty.");
+                return null;
+            }
 
             Mat face = preprocessFace(img);
-            if (face == null) return null;
+            if (face == null || face.empty()) {
+                System.err.println("DEBUG: Recognition failed - Preprocessed face is empty.");
+                return null;
+            }
 
             int[] label = new int[1];
             double[] confidence = new double[1];
+            
+            // Log prediction attempt
+            System.out.println("DEBUG: Starting face prediction...");
             recognizer.predict(face, label, confidence);
 
             System.out.println("DEBUG: Predicted Label: " + label[0] + " with Confidence: " + confidence[0]);
@@ -199,15 +220,16 @@ public class FaceRecognitionService {
             // LBPH confidence: lower is better. 
             // - Strong Match: < 60
             // - Normal Match: 60 - 95
-            // - Uncertain/Likely False: > 115
-            if (label[0] != -1 && confidence[0] < 115.0) { 
-                System.out.println("DEBUG: Face MATCHED (Confidence is within safe threshold < 115.0)");
+            // - Uncertain/Likely False: > 120
+            // Increased threshold slightly to 125.0 to be more lenient in varied lighting
+            if (label[0] != -1 && confidence[0] < 125.0) { 
+                System.out.println("DEBUG: Face MATCHED (Confidence " + confidence[0] + " is within safe threshold < 125.0)");
                 return (long) label[0];
             } else {
-                System.out.println("DEBUG: Face REJECTED (Confidence " + confidence[0] + " is too high/unsafe)");
+                System.out.println("DEBUG: Face REJECTED (Confidence " + confidence[0] + " is too high/unsafe or Label is -1)");
             }
         } catch (Exception e) {
-            System.out.println("Recognition error: " + e.getMessage());
+            System.err.println("DEBUG: Recognition error: " + e.getMessage());
             e.printStackTrace();
         }
         return null;
