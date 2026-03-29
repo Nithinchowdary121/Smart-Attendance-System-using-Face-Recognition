@@ -80,7 +80,7 @@ public class AttendanceService {
             return "Attendance marked successfully for " + currentStudent.getName();
         } else {
             System.err.println("DEBUG: Attendance REJECTED - Face matched a DIFFERENT student (ID: " + recognizedStudentId + ") instead of current user (ID: " + currentStudent.getId() + ")");
-            return "Face does not match your registered profile. Attendance can only be marked for your own identity.";
+            return "Attendance REJECTED-Face does not match your registered profile.Please register in the admin panel for attendance marking.";
         }
     }
 

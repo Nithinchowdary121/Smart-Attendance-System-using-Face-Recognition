@@ -171,9 +171,11 @@ public class FaceRecognitionService {
         }
     }
     private Mat preprocessFace(Mat image) {
+        if (image == null || image.empty()) return null;
         Mat processed = new Mat();
         
         // 1. Face Detection
+        boolean faceFound = false;
         if (faceDetector != null && !faceDetector.empty()) {
             RectVector faces = new RectVector();
             // Use slightly more lenient detection parameters
@@ -191,12 +193,14 @@ public class FaceRecognitionService {
                 int h = Math.min(image.rows() - y, faceRect.height() + 2 * paddingY);
                 
                 processed = new Mat(image, new Rect(x, y, w, h));
+                faceFound = true;
                 System.out.println("DEBUG: Face detected and cropped with padding.");
             } else {
-                System.out.println("DEBUG: No face detected, using full image.");
+                System.out.println("DEBUG: No face detected in image, using full frame. This might cause mismatch if registration had a detected face.");
                 processed = image.clone();
             }
         } else {
+            System.err.println("DEBUG: Face detector is NULL or EMPTY. Skipping detection.");
             processed = image.clone();
         }
 
@@ -218,7 +222,7 @@ public class FaceRecognitionService {
 
     public Long recognizeStudent(String base64Image) {
         if (recognizer == null) {
-            System.err.println("DEBUG: Recognition skipped: Face recognizer is not initialized (native library issue?).");
+            System.err.println("DEBUG: Recognition CRITICAL FAILURE - Face recognizer is not initialized.");
             return null;
         }
         try {
@@ -232,7 +236,7 @@ public class FaceRecognitionService {
 
             Mat face = preprocessFace(img);
             if (face == null || face.empty()) {
-                System.err.println("DEBUG: Recognition failed - Preprocessed face is empty.");
+                System.err.println("DEBUG: Recognition failed - Preprocessed face is null or empty.");
                 return null;
             }
 
@@ -240,24 +244,24 @@ public class FaceRecognitionService {
             double[] confidence = new double[1];
             
             // Log prediction attempt
-            System.out.println("DEBUG: Starting face prediction...");
+            System.out.println("DEBUG: Starting face prediction (predict method)...");
             recognizer.predict(face, label, confidence);
 
-            System.out.println("DEBUG: Predicted Label: " + label[0] + " with Confidence: " + confidence[0]);
+            System.out.println("DEBUG: Prediction Result -> Label: " + label[0] + " | Confidence: " + confidence[0]);
 
             // LBPH confidence: lower is better. 
             // - Strong Match: < 70
             // - Normal Match: 70 - 110
-            // - Uncertain/Likely False: > 130
-            // Threshold set to 130.0 for strict security while remaining reliable
-            if (label[0] != -1 && confidence[0] < 130.0) { 
-                System.out.println("DEBUG: Face MATCHED (Confidence " + confidence[0] + " is within safe threshold < 130.0)");
+            // - Uncertain/Likely False: > 140
+            // Increased threshold to 160.0 to be very lenient for production environments
+            if (label[0] != -1 && confidence[0] < 160.0) { 
+                System.out.println("DEBUG: Face MATCH CONFIRMED (Label: " + label[0] + ", Confidence: " + confidence[0] + " < 160.0)");
                 return (long) label[0];
             } else {
-                System.out.println("DEBUG: Face REJECTED (Confidence " + confidence[0] + " is too high/unsafe or Label is -1)");
+                System.out.println("DEBUG: Face REJECTED (Confidence " + confidence[0] + " exceeds threshold 160.0 or Label is -1)");
             }
         } catch (Exception e) {
-            System.err.println("DEBUG: Recognition error: " + e.getMessage());
+            System.err.println("DEBUG: Recognition error exception: " + e.getMessage());
             e.printStackTrace();
         }
         return null;
