@@ -1,10 +1,6 @@
 package com.attendance.backend.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name="students")
@@ -22,18 +18,22 @@ public class Student {
 
     private String FaceImagePath;
 
+    @Lob
+    @Column(columnDefinition="LONGBLOB")
+    private byte[] faceData;
+
     public Student(){}
 
     public Long getId() {
         return id;
     }
 
-    public String getName() {
-        return name;
-    }
-
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public void setName(String name) {
@@ -44,12 +44,12 @@ public class Student {
         return email;
     }
 
-    public String getRollNumber() {
-        return rollNumber;
-    }
-
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getRollNumber() {
+        return rollNumber;
     }
 
     public void setRollNumber(String rollNumber) {
@@ -62,5 +62,13 @@ public class Student {
 
     public void setFaceImagePath(String faceImagePath) {
         this.FaceImagePath = faceImagePath;
+    }
+
+    public byte[] getFaceData() {
+        return faceData;
+    }
+
+    public void setFaceData(byte[] faceData) {
+        this.faceData = faceData;
     }
 }

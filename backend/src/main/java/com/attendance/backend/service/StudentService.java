@@ -71,11 +71,19 @@ public class StudentService {
         System.out.println("Student biometric record saved with ID: " + savedStudent.getId());
         
         try {
-            // Save face image and update student record with path
+            // 3. Save face image data to DATABASE (persistent on Render)
+            byte[] faceBytes = faceRecognitionService.decodeBase64Image(base64Image);
+            if (faceBytes != null) {
+                savedStudent.setFaceData(faceBytes);
+                System.out.println("DEBUG: Face bytes saved to student record (DB persistence)");
+            }
+
+            // 4. Save face image to disk (ephemeral path for backward compatibility)
             String facePath = faceRecognitionService.saveStudentFace(savedStudent.getId(), base64Image);
             savedStudent.setFaceImagePath(facePath);
+            
             studentRepository.saveAndFlush(savedStudent); // Force save to DB
-            System.out.println("Face image saved to: " + facePath);
+            System.out.println("Face image saved to disk: " + facePath);
             
             // Retrain the model AFTER the database record is fully saved and flushed
             System.out.println("Retraining model with new student data...");
@@ -129,8 +137,17 @@ public class StudentService {
         student.setRollNumber(studentDetails.getRollNumber());
         
         if (base64Image != null && !base64Image.isEmpty()) {
+            // Update database blob for persistence
+            byte[] faceBytes = faceRecognitionService.decodeBase64Image(base64Image);
+            if (faceBytes != null) {
+                student.setFaceData(faceBytes);
+                System.out.println("DEBUG: Updated student face data in DB.");
+            }
+            
+            // Update file system path for compatibility
             String facePath = faceRecognitionService.saveStudentFace(student.getId(), base64Image);
             student.setFaceImagePath(facePath);
+            
             studentRepository.saveAndFlush(student); // Force save before training
             System.out.println("Retraining model after student update...");
             faceRecognitionService.trainModel();

@@ -58,16 +58,30 @@ public class FaceRecognitionService {
     @Async
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        System.out.println("Application is ready. Initializing heavy components in background...");
-        loadCascadeClassifier();
-        trainModel();
+        System.out.println("DEBUG: Application is ready. Initializing components in background...");
+        try {
+            loadCascadeClassifier();
+            trainModel();
+            System.out.println("DEBUG: Face Recognition background initialization complete.");
+        } catch (Exception e) {
+            System.err.println("DEBUG: Error during background initialization: " + e.getMessage());
+        }
     }
 
     private void loadCascadeClassifier() {
         try {
-            // Try multiple locations for the cascade file
+            // Priority path for Docker/Render
+            File classifierFile = new File("haarcascade_frontalface_default.xml");
+            if (classifierFile.exists()) {
+                faceDetector = new CascadeClassifier(classifierFile.getAbsolutePath());
+                if (!faceDetector.empty()) {
+                    System.out.println("DEBUG: Cascade classifier loaded from root: " + classifierFile.getAbsolutePath());
+                    return;
+                }
+            }
+
+            // Fallback paths
             String[] possiblePaths = {
-                "haarcascade_frontalface_default.xml",
                 "backend/haarcascade_frontalface_default.xml",
                 "src/main/resources/haarcascade_frontalface_default.xml",
                 new File(System.getProperty("user.dir"), "haarcascade_frontalface_default.xml").getAbsolutePath()
@@ -78,19 +92,15 @@ public class FaceRecognitionService {
                 if (file.exists()) {
                     faceDetector = new CascadeClassifier(file.getAbsolutePath());
                     if (!faceDetector.empty()) {
-                        System.out.println("Cascade classifier loaded successfully from: " + file.getAbsolutePath());
-                        break;
+                        System.out.println("DEBUG: Cascade classifier loaded from fallback: " + file.getAbsolutePath());
+                        return;
                     }
                 }
             }
 
-            if (faceDetector == null || faceDetector.empty()) {
-                System.out.println("Warning: Cascade classifier is empty. Face detection will be skipped.");
-                faceDetector = null;
-            }
+            System.err.println("DEBUG: CRITICAL - Cascade classifier not found in any location.");
         } catch (Exception e) {
-            System.out.println("Error loading cascade classifier: " + e.getMessage());
-            faceDetector = null;
+            System.err.println("DEBUG: Error loading cascade classifier: " + e.getMessage());
         }
     }
 
@@ -110,7 +120,24 @@ public class FaceRecognitionService {
             List<Integer> labelsList = new ArrayList<>();
 
             for (Student student : students) {
-                if (student.getFaceImagePath() != null) {
+                // Check for database-stored face data first (persistent on Render)
+                if (student.getFaceData() != null && student.getFaceData().length > 0) {
+                    try {
+                        Mat img = imdecode(new Mat(student.getFaceData()), IMREAD_GRAYSCALE);
+                        if (!img.empty()) {
+                            Mat face = preprocessFace(img);
+                            if (face != null && !face.empty()) {
+                                imagesList.add(face);
+                                labelsList.add(student.getId().intValue());
+                                System.out.println("DEBUG: Trained student from DB: " + student.getName());
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("DEBUG: Error decoding face data from DB for student: " + student.getId());
+                    }
+                } 
+                // Fallback to file system (ephemeral, might be missing on Render)
+                else if (student.getFaceImagePath() != null) {
                     File imgFile = new File(student.getFaceImagePath());
                     if (imgFile.exists()) {
                         Mat img = imread(student.getFaceImagePath(), IMREAD_GRAYSCALE);
@@ -119,6 +146,7 @@ public class FaceRecognitionService {
                             if (face != null && !face.empty()) {
                                 imagesList.add(face);
                                 labelsList.add(student.getId().intValue());
+                                System.out.println("DEBUG: Trained student from file: " + student.getName());
                             }
                         }
                     }
@@ -235,21 +263,26 @@ public class FaceRecognitionService {
         return null;
     }
 
+    public byte[] decodeBase64Image(String base64Image) {
+        if (base64Image == null || !base64Image.contains(",")) return null;
+        try {
+            return Base64.getDecoder().decode(base64Image.split(",")[1]);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public String saveStudentFace(Long studentId, String base64Image) throws IOException {
         System.out.println("Processing face image for student ID: " + studentId);
-        if (base64Image == null || !base64Image.contains(",")) {
-            throw new IOException("Invalid image format");
-        }
+        byte[] imageBytes = decodeBase64Image(base64Image);
+        if (imageBytes == null) throw new IOException("Invalid image format");
         
         try {
-            byte[] imageBytes = Base64.getDecoder().decode(base64Image.split(",")[1]);
             String filePath = storagePath + "student_" + studentId + ".jpg";
             
-            // Save RAW image to disk
-            // We only preprocess in trainModel() and recognizeStudent()
-            // to ensure consistency and avoid double preprocessing
-            System.out.println("Saving raw student image to: " + filePath);
+            // Save to disk (ephemeral)
             Files.write(Paths.get(filePath), imageBytes);
+            System.out.println("DEBUG: Face image saved to disk: " + filePath);
             
             return filePath;
         } catch (Exception e) {
