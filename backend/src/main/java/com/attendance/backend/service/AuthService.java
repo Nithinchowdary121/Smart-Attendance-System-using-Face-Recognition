@@ -80,8 +80,12 @@ public class AuthService {
         }
 
         try {
-            // Default role if not provided
+            // 1. Set role strictly based on provided input
             if (user.getRole() == null || user.getRole().trim().isEmpty()) {
+                user.setRole("STUDENT");
+            } else if ("ADMIN".equalsIgnoreCase(user.getRole().trim())) {
+                user.setRole("ADMIN");
+            } else {
                 user.setRole("STUDENT");
             }
 
@@ -93,12 +97,10 @@ public class AuthService {
             if (user.getName() == null || user.getName().trim().isEmpty()) user.setName(user.getUsername());
 
             User savedUser = userRepository.save(user);
-            System.out.println("DEBUG: User [" + savedUser.getUsername() + "] saved with ID: " + savedUser.getId());
+            System.out.println("DEBUG: User [" + savedUser.getUsername() + "] saved with ID: " + savedUser.getId() + " Role: " + savedUser.getRole());
 
-            // If it's a student, automatically create a student profile if it doesn't exist
-            if ("STUDENT".equals(user.getRole()) || "USER".equals(user.getRole())) {
-                user.setRole("STUDENT");
-                
+            // 2. ONLY create a biometric Student profile if the role is STUDENT
+            if ("STUDENT".equals(user.getRole())) {
                 System.out.println("DEBUG: Checking student profile for email: [" + user.getEmail() + "]");
                 if (studentRepository.findByEmail(user.getEmail()).isEmpty()) {
                     com.attendance.backend.model.Student student = new com.attendance.backend.model.Student();
@@ -110,6 +112,8 @@ public class AuthService {
                 } else {
                     System.out.println("DEBUG: Student profile already exists for: [" + user.getEmail() + "]");
                 }
+            } else {
+                System.out.println("DEBUG: Skipping student profile creation for role: " + user.getRole());
             }
         } catch (Exception e) {
             System.err.println("DEBUG: Registration ERROR: " + e.getMessage());

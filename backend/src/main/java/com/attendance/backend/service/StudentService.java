@@ -36,19 +36,19 @@ public class StudentService {
         System.out.println("Registering student: " + student.getName() + " (" + student.getEmail() + ")");
         
         // 1. Ensure a User account exists for this student
-        // If the student created their own account, we find it.
-        // Otherwise, we create one using email as the default username.
+        // When an Admin creates a student profile, we must ensure the User role is "STUDENT"
         User user = userRepository.findByUsername(student.getEmail())
                 .orElseGet(() -> {
                     User newUser = new User();
                     newUser.setUsername(student.getEmail());
-                    newUser.setRole("STUDENT");
+                    newUser.setRole("STUDENT"); // ALWAYS STUDENT when created via StudentService
                     return newUser;
                 });
 
         user.setName(student.getName());
         user.setEmail(student.getEmail());
         user.setRollNumber(student.getRollNumber());
+        user.setRole("STUDENT"); // Force role update if user existed with wrong role
         
         // If it's a new account, set default password as roll number
         if (user.getId() == null) {
